@@ -3,7 +3,7 @@ library(RSQLite)
 library(leaflet)
 library(plotly)
 
-db <- '/home/cak/Desktop/Dashboard/KD/Data/data.db'
+db <- './Data/data.db'
 conn <- dbConnect(RSQLite::SQLite(),db)
 query <- "SELECT * from hes h "
 dr <- dbGetQuery(conn, query)
