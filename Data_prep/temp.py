@@ -3,61 +3,109 @@ import pandas as pd
 from sqlalchemy import create_engine
 from pyeto import thornthwaite, monthly_mean_daylight_hours, deg2rad
 import numpy as np
+import itertools
 
 engine = create_engine('postgresql://postgres:kalman@192.168.0.19:8888/climate')
 
+
 query = """select * from "HES" h ;"""
 all_hes = pd.read_sql(query, engine)
-
-for hes in all_hes.iterrows():
-    bid = hes[1]['bid']
-    longtitude = hes[1]['longtitude']
-    latitude = hes[1]['latitude']
-
-    query = f"""select * from "MGM_Temp" mt where mt.gridno = ((SELECT mg.gridno  FROM "MGM_Grid" mg  ORDER BY mg.geom <-> ST_GeogFromText('POINT({longtitude} {latitude})')) LIMIT 1);"""
-
-    df = pd.read_sql(query, engine)
-    df = df.set_index(['yil', 'ay'])
-    temp['at'] = df.apply(lambda row: thorn(row.name[0]), axis=1)
-
-pd.Series([str(i) for i in range(1, 13)], index=['size_kb', 'size_mb', 'size_gb'])
-
-ll = [str(i) for i in range(1, 13)]
-
-at = np.array(mmdlh).reshape(-1, len(mmdlh))
+n = len(all_hes)
 
 
-def thorn(year, df):
-    data = df.loc[df['yil'] == year]['hg45sck'].values
-    lat = 37
-    lat = deg2rad(lat)
+def thorn(year, latitude, df, model):
+    data = df.loc[df['yil'] == year][model].values
+    # lat = 37
+    lat = deg2rad(latitude)
     mmdlh = monthly_mean_daylight_hours(lat, year)
     evapo = thornthwaite(data, mmdlh)
     return evapo
-    # df = pd.DataFrame(np.array(mmdlh).reshape(-1, len(mmdlh)), columns=[str(i) for i in range(1, 13)])
 
 
-at = pd.DataFrame()
-at['at'] = df.groupby('yil').apply(lambda x: thorn(x.name))
+def thorn_clima(year, latitude, df, model, senario):
+    data = df.loc[(df['Yıl'] == year) & (df['Model'] == model) & (df['Senaryo'] == senario), 'Ortalama_Sıcaklık'].values
+    # lat = 37
+    if len(data) != 12:
+        data = data[0:12]
+    lat = deg2rad(latitude)
+    mmdlh = monthly_mean_daylight_hours(lat, year)
+    evapo = thornthwaite(data, mmdlh)
+    return evapo
 
 
-def doCalculation(df):
-    groupCount = df.size
-    groupSum = df['my_labels'].notnull().sum()
-    return groupCount / groupSum
+def export_MGM():
+    models = ['hg45sck', 'hg85sck', 'mpi45sck', 'mpi85sck']
+    df_result = pd.DataFrame()
+    for i, hes in enumerate(all_hes.iterrows()):
+        bid = hes[1]['bid']
+        longtitude = hes[1]['longtitude']
+        latitude = hes[1]['latitude']
+
+        # query = f"""-- select * from "MGM_Temp" mt where mt.gridno = ((SELECT mg.gridno  FROM "MGM_Grid" mg  ORDER BY mg.geom <-> ST_GeogFromText('POINT({longtitude} {latitude})')) LIMIT 1);""" # for MGM Temp
+        query = f"""select * from "Clima_Temp" ct where ct."Grid" = ((SELECT cg."Grid"  FROM "Clima_Grid" cg  ORDER BY cg.geom <-> ST_GeogFromText('POINT({longtitude} {latitude})')) LIMIT 1);"""
+
+        df = pd.read_sql(query, engine)
+
+        years = df['yil'].unique()
+        years = years[:-1]
+        df = df.loc[df['yil'].isin(years)]
+
+        for model in models:
+            result = [thorn(year, latitude, df, model) for year in years]
+            result = np.array(result).flatten()
+            df[model + '_evaporation'] = result
+        df['bid'] = bid
+        df_result = df_result.append(df)
+        print(i, n)
+
+    df_result.to_csv('/home/cak/Desktop/KD_Dashboard/Data_prep/mgm_evaporation.csv')
 
 
-year = 2014
-lat = deg2rad(57.1526)
-mmdlh = monthly_mean_daylight_hours(lat, year)
-monthly_t = [3.1, 3.5, 5.0, 6.7, 9.3, 12.1, 14.3, 14.1, 11.8, 8.9, 5.5, 3.8]
-thornthwaite(monthly_t, mmdlh)
+def export_Clima():
+    df_result = pd.DataFrame()
+    dublicate_grids = pd.DataFrame()
+    senarios = ['RCP4.5', 'RCP8.5']
+    models = ['HadGEM2-ES', 'MPI-ESM-MR', 'CNRM-CM5']
+    AY = [i for i in range(1, 13)]
 
-# tt = df[['ay', 'yil', 'hg45sck']]
-years = df['yil'].unique()
-years = years[:-1]
-df = df.loc[df['yil'].isin(years)]
-result = [thorn(i, df) for i in years]
-result = np.array(result).flatten()
-df['Evaporation'] = result
+    for i, hes in enumerate(all_hes.iterrows()):
+        bid = hes[1]['bid']
+        longtitude = hes[1]['longtitude']
+        latitude = hes[1]['latitude']
 
+        # query = f"""-- select * from "MGM_Temp" mt where mt.gridno = ((SELECT mg.gridno  FROM "MGM_Grid" mg  ORDER BY mg.geom <-> ST_GeogFromText('POINT({longtitude} {latitude})')) LIMIT 1);""" # for MGM Temp
+        query = f"""select * from "Clima_Temp" ct where ct."Grid" = ((SELECT cg."Grid"  FROM "Clima_Grid" cg  ORDER BY cg.geom <-> ST_GeogFromText('POINT({longtitude} {latitude})')) LIMIT 1);"""
+
+        df = pd.read_sql(query, engine)
+
+        years = df['Yıl'].unique()
+        years.sort()
+        years = years[:-1]
+        df = df.loc[df['Yıl'].isin(years)]
+
+        # check duplicate grids
+
+        if len(df.Havza.unique()) != 1:
+            tt = {'HES_ID': bid, 'Grid_ID': df['Grid'].unique()[0], 'Havza': list(df['Havza'].unique())}
+            temp = pd.DataFrame([tt])
+            dublicate_grids = dublicate_grids.append(temp)
+            continue
+
+        date = list(itertools.product(years, AY))
+        df_temp = pd.DataFrame(date, columns=['Year', 'Month'])
+
+        for model in models:
+            for senario in senarios:
+                result = [thorn_clima(year, latitude, df, model, senario) for year in years]
+                result = np.array(result).flatten()
+
+                df_temp[model + '_' + senario + '_evaporation'] = result
+        df['bid'] = bid
+        df_result = df_result.append(df_temp)
+        print(i, n)
+
+    df_result.to_csv('/home/cak/Desktop/KD_Dashboard/Data_prep/clima_evaporation.csv')
+    dublicate_grids.to_csv('/home/cak/Desktop/KD_Dashboard/Data_prep/dublicate_grids.csv')
+
+
+export_Clima()
