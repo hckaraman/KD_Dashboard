@@ -5,7 +5,8 @@ from pyeto import thornthwaite, monthly_mean_daylight_hours, deg2rad
 import numpy as np
 import itertools
 
-engine = create_engine('postgresql://postgres:kalman@192.168.0.19:8888/climate')
+# engine = create_engine('postgresql://postgres:kalman@192.168.0.19:8888/climate')
+engine = create_engine('postgresql://postgres:kalman@46.197.216.155:8888/climate')
 
 
 query = """select * from "HES" h ;"""
@@ -100,7 +101,7 @@ def export_Clima():
                 result = np.array(result).flatten()
 
                 df_temp[model + '_' + senario + '_evaporation'] = result
-        df['bid'] = bid
+        df_temp['bid'] = bid
         df_result = df_result.append(df_temp)
         print(i, n)
 
