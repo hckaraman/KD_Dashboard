@@ -40,7 +40,7 @@ def thorn_clima(year, latitude, df, model, senario):
     lat = deg2rad(latitude)
     mmdlh = monthly_mean_daylight_hours(lat, year)
     evapo = np.array(thornthwaite(data, mmdlh))
-    return evapo
+    return data, evapo
 
 
 def export_MGM():
@@ -112,10 +112,12 @@ def export_Clima():
 
         for model in models:
             for senario in senarios:
-                result = [thorn_clima(year, latitude, df, model, senario) for year in years]
+                data, result = zip(*[thorn_clima(year, latitude, df, model, senario) for year in years])
+                data = np.array(data).flatten()
                 result = np.array(result).flatten()
 
                 df_temp[model + '_' + senario + '_evaporation'] = result
+                df_temp[model + '_' + senario + '_temperature'] = data
         df_temp['bid'] = bid
         df_result = df_result.append(df_temp)
         print(i, n)
