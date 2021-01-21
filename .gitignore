@@ -40,3 +40,7 @@ Data/
 .idea/
 
 PyETo/
+
+venv/bin/
+venv
+*.csv

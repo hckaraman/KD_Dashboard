@@ -1,31 +1,24 @@
-import psycopg2
-import shapely
-from shapely import wkb
-import geopandas as gpd
 import pandas as pd
-import datetime
-from dateutil.relativedelta import relativedelta
 import os, time, glob
-from sqlalchemy import create_engine
-from sqlalchemy.pool import NullPool
 import concurrent.futures
 from itertools import cycle, zip_longest
 
 start = time.time()
 
+folder = os.path.dirname(os.path.realpath(__file__))
+
 global df_havza
-df_havza = pd.read_csv('/mnt/c/Users/cagri/Desktop/KD/Clima/Basins/basins.csv')
+df_havza = pd.read_csv(os.path.join(folder, 'basins.csv'))
 
 global df
-df = pd.read_pickle('/mnt/s/KD_Dashboard/Data_prep/data.pkl')
+df = pd.read_pickle(os.path.join(folder, 'data.pkl'))
 
 models = ['MPI-ESM-MR', 'CNRM-CM5', 'HadGEM2-ES']
 senaryos = ['RCP4.5', 'RCP8.5']
-years = [year for year in range(2015, 2017)]
-havzas = list(df_havza.bid.values)
-months = [m for m in range(1, 13)]
+years = [year for year in range(2015, 2016)]
+havzas = list(df_havza.bid.values)[0:12]
+months = [m for m in range(1, 2)]
 
-id = 1
 rows_list = []
 
 
@@ -85,9 +78,12 @@ def start_processing():
             futures.append(executor.submit(extract, *par))
 
         for future in concurrent.futures.as_completed(futures):
-            print(future.result())
+            app_data(future.result())
 
-
+        if future.done():
+            df_all = pd.DataFrame(rows_list)
+            df_all.to_csv(os.path.join(folder, "result.csv"))
+            executor.shutdown()
         # future_proc = {executor.submit(extract, *f): f for f in params}
         # for future in concurrent.futures.as_completed(future_proc):
         #     #     app_data(future.result())
