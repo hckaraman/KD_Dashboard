@@ -45,6 +45,7 @@ def thorn_clima(year, latitude, df, model, senario):
 
 def export_MGM():
     models = ['hg45sck', 'hg85sck', 'mpi45sck', 'mpi85sck']
+    # models = ['hg45sck_anomali', 'hg85sck_anomali', 'mpi45sck_anomali', 'mpi85sck_anomali']
     df_result = pd.DataFrame()
     for i, hes in enumerate(all_hes.iterrows()):
         bid = hes[1]['bid']
@@ -55,9 +56,15 @@ def export_MGM():
         # query = f"""select * from "MGM_Temp" ct where ct."Grid" = ((SELECT cg."Grid"  FROM "MGM_Grid" cg  ORDER BY cg.geom <-> ST_GeogFromText('POINT({longtitude} {latitude})')) LIMIT 1);"""
 
         df = pd.read_sql(query, engine)
+        df['hg45sck'] = df['hg45sck_anomali'] + df['hg45refsck']
+        df['hg85sck'] = df['hg85sck_anomali'] + df['hg45refsck']
+
+        df['mpi45sck'] = df['mpi45sck_anomali'] + df['mpi_refsck']
+        df['mpi85sck'] = df['mpi85sck_anomali'] + df['mpi_refsck']
 
         years = df['yil'].unique()
-        years = years[:-1]
+        years.sort()
+        years = years[1:-1]
         df = df.loc[df['yil'].isin(years)]
 
         for model in models:
@@ -68,7 +75,7 @@ def export_MGM():
         df_result = df_result.append(df)
         print(i, n)
 
-    df_result.to_csv('/mnt/s/KD_Dashboard/Data_prep/Data/mgm_evaporation.csv')
+    df_result.to_csv('/mnt/s/KD_Dashboard/Data_prep/Data/mgm_evaporation_new.csv')
 
 
 def export_Clima():
@@ -126,5 +133,5 @@ def export_Clima():
     dublicate_grids.to_csv('/mnt/s/KD_Dashboard/Data_prep/Data/dublicate_grids.csv')
 
 
-# export_MGM()
-export_Clima()
+export_MGM()
+# export_Clima()
