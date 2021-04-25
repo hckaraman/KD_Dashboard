@@ -44,7 +44,7 @@ def thorn_clima(year, latitude, df, model, senario):
 
 
 def export_MGM():
-    models = ['hg45sck', 'hg85sck', 'mpi45sck', 'mpi85sck']
+    models = ['hg45sck', 'hg85sck', 'mpi45sck', 'mpi85sck', 'hg45refsck', 'mpi_refsck']
     # models = ['hg45sck_anomali', 'hg85sck_anomali', 'mpi45sck_anomali', 'mpi85sck_anomali']
     df_result = pd.DataFrame()
     for i, hes in enumerate(all_hes.iterrows()):
@@ -75,7 +75,7 @@ def export_MGM():
         df_result = df_result.append(df)
         print(i, n)
 
-    df_result.to_csv('/mnt/s/KD_Dashboard/Data_prep/Data/mgm_evaporation_new.csv')
+    df_result.to_csv('/mnt/s/KD_Dashboard/Data_prep/Data/mgm_evaporation_new_2.csv')
 
 
 def export_Clima():

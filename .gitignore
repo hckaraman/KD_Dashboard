@@ -44,3 +44,15 @@ PyETo/
 venv/bin/
 venv
 *.csv
+
+*.pkl
+
+*.gz
+
+*.log
+
+Data_prep/Results/
+
+*.pdf
+
+*.qgz
